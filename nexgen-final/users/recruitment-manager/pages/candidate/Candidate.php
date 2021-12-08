@@ -1,0 +1,199 @@
+<?php
+// require_once("../../assets/config.php");
+require_once $_SERVER['DOCUMENT_ROOT'] . '/nexgen-final/assets/config.php';
+
+
+
+// echo "Candidate FIle";
+
+class Candidate extends Database
+{
+	public $firstname;
+	public $lastname;
+	public $fullname;
+	public $gender;
+	public $dob;
+	public $nationality;
+	public $email;
+	public $nic;
+	public $contactno;
+	public $telephone;
+	public $address;
+	public $position;
+	public $department;
+	public $salary;
+	public $wrkschedul;
+	public $eduqual;
+	public $professional;
+	public $expcompany;
+	public $expdesig;
+	public $expfrom;
+	public $expto;
+	public $userRole;
+
+	public $errors;
+
+	public function getCandidate($id)
+	{
+		$sql = "SELECT * FROM candidate WHERE id = :id";
+		$statement = $this->conn->prepare($sql);
+		$statement->execute(['id' => $id]);
+		$result =      $statement->fetch(PDO::FETCH_ASSOC);
+		return $result;
+	}
+	public function addCandidate($data)
+	{
+		foreach ($data as $name => $attribute) {
+			if (property_exists($this, $name)) {
+				$this->$name = $attribute;
+			}
+		}
+		if ($this->dob) {
+			$this->dob = date('Y-m-d', strtotime($this->dob));
+		}
+		if ($this->validateCandidate()) {
+
+
+			$statement = $this->conn->prepare('INSERT INTO candidate (fullname, firstname,lastname,dob, gender, nationality, nicno, email,contactno,telephone, address, department, expsalary, position, eduqual, profqual, workcomp, workdesig, workfrom, workto,recmgr_assignemail,userRole) VALUES (:fullname, :firstname, :lastname, :dob, :gender, :nationality, :nic, :email, :contactno, :telephone, :address, :department, :salary, :position,:eduqual, :professional, :expcompany, :expdesig, :expfrom, :expto,:email,:userRole)');
+
+			$result = $statement->execute([
+				'fullname' => $this->fullname,
+				'firstname' => $this->firstname,
+				'lastname' => $this->lastname,
+				'dob' => $this->dob,
+				'gender' => $this->gender,
+				'nationality' => $this->nationality,
+				'nic' => $this->nic,
+				'email' => $this->email,
+				'contactno' => $this->contactno,
+				'telephone' => $this->telephone,
+				'address' => $this->address,
+				'position' => $this->position,
+				'department' => $this->department,
+				'salary' => $this->salary,
+				'eduqual' => $this->eduqual,
+				'professional' => $this->professional,
+				'expcompany' => $this->expcompany,
+				'expdesig' => $this->expdesig,
+				'expfrom' => $this->expfrom,
+				'expto' => $this->expto,
+				'userRole' => "employee"
+
+			]);
+
+			// header("Location: pages/thankyou.html");
+		} else {
+			return $this->errors;
+		}
+	}
+	private function getUniqueCandidate($nic, $position, $department)
+	{
+		$sql = "SELECT * FROM candidate WHERE nicno = :nic AND position= :position AND department= :department";
+		$statement = $this->conn->prepare($sql);
+		$statement->execute(['nic' => $nic, 'position' => $position, 'department' => $department]);
+
+		$result =      $statement->fetch(PDO::FETCH_ASSOC);
+		return $result;
+	}
+
+	public function updateCandidate($id, $data)
+	{
+	}
+	public function deleteCandidate($id)
+	{
+	}
+
+	public function searchCandidate($data = [])
+	{
+		foreach ($data as $name => $attribute) {
+			if (property_exists($this, $name)) {
+				$this->$name = $attribute;
+			}
+		}
+		$statement = $this->conn->prepare('SELECT * from candidate WHERE position like :position && department like :department');
+
+		$result = $statement->execute([
+			'position' => '%' . $this->position . '%', 'department' => '%' . $this->department . '%',
+
+		]);
+		return $statement->fetchAll(PDO::FETCH_ASSOC);
+	}
+	public function validateCandidate()
+	{
+
+		$this->errors = [];
+		if (!preg_match("/^[a-zA-Z ]+$/", $this->fullname)) {
+			$this->errors["fullname"] = "Full Name must contain only alphabets and space";
+		}
+
+		if (!preg_match("/^[a-zA-Z ]+$/", $this->firstname)) {
+			$this->errors["firstname"] = "First Name must contain only alphabets and space";
+		}
+		if (!preg_match("/^[a-zA-Z ]+$/", $this->lastname)) {
+			$this->errors["lastname"] = "Last Name must contain only alphabets and space";
+		}
+
+		if (!filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
+			$this->errors["email"] = "Please Enter Valid Email ID";
+		}
+
+
+		if (!preg_match("/^(\d){9}(([vVxX])|(\d){3})$/", $this->nic)) {
+			$this->errors["nic"] = "NIC must contain 9 digits followed by X or V";
+		}
+
+
+		if ($this->dob) {
+			$age = floor((time() - strtotime($this->dob)) / 31556926);
+			if ($age < 18) {
+				$this->errors["dob"] = "You should be above 18 to apply for this job";
+			}
+		} else {
+			$this->errors["dob"] = "Please fill your date of birth";
+		}
+
+
+
+		if (strlen($this->nic) == 10) {
+			$year = date('y', strtotime($this->dob));
+
+			if (strpos($this->nic, $year) !== 0) {
+				$this->errors["dob"] = "Date of birth is not matching with your NIC";
+			}
+		}
+
+
+		if (strlen($this->nic) == 12) {
+			$year = date('Y', strtotime($this->dob));
+
+
+
+			if (strpos($this->nic, $year) !== 0) {
+				$this->errors["dob"] = "Date of birth is not matching with your NIC";
+			}
+		}
+
+
+		if (!preg_match("/^(\d){10}$/", $this->telephone)) {
+			$this->errors["telephone"] = "Telephone number must have 10 digits.";
+		}
+		if (!preg_match("/^(\d){10}$/", $this->contactno)) {
+			$this->errors["contactno"] = "Contact number must have 10 digits";
+		}
+
+
+
+		if (empty($this->contactno)) {
+			$this->errors["contactno"] = "Contact No cannot be blank";
+		}
+
+		if ($this->getUniqueCandidate($this->nic, $this->position, $this->department)) {
+			$this->errors["position"] = "You have already applied for " . $this->position . " at " . $this->department;
+		}
+
+		if (empty($this->eduqual)) {
+			$this->errors["eduqual"] = "Educational Qualifications cannot be blank";
+		}
+		return !count($this->errors);
+	}
+}
